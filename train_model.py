@@ -9,7 +9,9 @@ from sklearn.model_selection import train_test_split
 import shutil
 import pandas as pd
 import matplotlib.pyplot as plt
-#from torch.optim import lr_scheduler
+import numpy as np
+from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
+import seaborn as sns
 
 
 
@@ -162,18 +164,40 @@ plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
 
-#torch.save(model.state_dict(), 'plant_classifier.pth')
+# Evaluation function
+def evaluate_model(model, dataloader, phase):
+    model.eval()
+    true_labels = []
+    predicted_labels = []
 
+    with torch.no_grad():
+        for inputs, labels in dataloader[phase]:
+            inputs, labels = inputs.to(device), labels.to(device)
 
-    num_to_gen = 100
-    random_orig_seq_start = list(original_sequence.generate_mutations(num_to_gen,5,unique=True,force_mutations=True))
-    #print(random_orig_seq_start)
-    new_start_list_just_seq = []
-    for x in random_orig_seq_start:
-        new_start_list_just_seq.append(x.__sequence__)
-    known_strains = generate_known_strains()
-    genetic_algorithm = Genetic_Algorithm("results/Jeb/run_"+input("Enter file run postfix:"), random_orig_seq_start, number_of_generations=100, number_of_children=10,top_to_preserve=num_to_gen,
-                                          interbreed_random_prob=None, interbreed_specific_sequence_prob=None,
-                                          fitness_weight=None,antigen_weight=1, interbreed_specific_sequence=None,
-                                          interbreed_top_prob=None, preserve_lowest_strategy=None,
-                                          strains_to_check_for=known_strains)
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)
+
+            true_labels.extend(labels.cpu().numpy())
+            predicted_labels.extend(preds.cpu().numpy())
+
+    return np.array(true_labels), np.array(predicted_labels)
+
+# Load the best saved model
+model.load_state_dict(torch.load('plant_classifier.pth'))
+
+# Evaluate the model on the validation dataset
+true_labels, predicted_labels = evaluate_model(model, dataloaders, 'val')
+
+# Calculate precision, recall, and F1 score
+precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predicted_labels, average='weighted')
+print(f'Precision: {precision:.4f}, Recall: {recall:.4f}, F1 score: {f1:.4f}')
+
+# Plot the confusion matrix
+cm = confusion_matrix(true_labels, predicted_labels)
+plt.figure(figsize=(12, 12))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix')
+plt.show()
+
