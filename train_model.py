@@ -24,7 +24,7 @@ num_epochs = 50
 batch_size = 64
 learning_rate = 0.001
 
-# Data augmentation and normalization
+# Define data augmentation and normalization using torchvision.transforms
 data_transforms = {
     'train': transforms.Compose([
         transforms.RandomResizedCrop(224),
@@ -40,6 +40,7 @@ data_transforms = {
     ]),
 }
 
+# Function to split dataset into training and validation sets
 def create_val_split(data_dir, val_split=0.2):     
     for plant_type in os.listdir(data_dir):
         plant_type_path = os.path.join(data_dir, plant_type)
@@ -73,13 +74,13 @@ else:
     create_val_split(data_dir)
     
 
-# Load dataset
+# Load dataset and create DataLoaders for training and validation
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
 dataloaders = {x: DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=0) for x in ['train', 'val']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes
 
-# Define the CNN
+# Define CNN architecture in a class called PlantClassifier
 class PlantClassifier(nn.Module):
     def __init__(self, num_classes, dropout_prob=0.25):
         super(PlantClassifier, self).__init__()
@@ -118,7 +119,6 @@ class PlantClassifier(nn.Module):
 model = PlantClassifier(len(class_names)).to(device)
 criterion = nn.CrossEntropyLoss()  # Loss function
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Optimizer
-#scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 # Training loop
 train_accuracies = []
@@ -150,8 +150,7 @@ for epoch in range(num_epochs):
         max_accuracy = epoch_acc
         torch.save(model.state_dict(), 'plant_classifier.pth')
         print("Saved new highscore model, acc=", max_accuracy)
-        
-    #scheduler.step()
+       
 
     print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
     train_accuracies.append(epoch_acc)
